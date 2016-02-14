@@ -4,25 +4,22 @@ public class SharingScheme {
 	
 	public int prime;
 	public int degree;
-	public int[] recombinationVector;
 	
-	public SharingScheme(int prime, int degree, int partiesCount) {
+	public SharingScheme(int prime, int degree) {
 		this.degree = degree;
 		this.prime = prime;
-		recombinationVector = generateRecombinationVector(partiesCount);
-		//initializeCoefficients(degree);
 		
 		System.out.println("Class initialized:");
 		System.out.println("Degree of polynomial: t = " + degree);
 		System.out.println("Prime number: p = " + prime);
-		//printPolynomial();
 	}
 	
-	public int[] generateShares(int partyCount, int secret) {
+	public int[] generateShares(int secret, int partyCount) {
 		
 		int[] coefficients = generateCoefficients(secret);
 		int[] result = new int[partyCount];
 		
+		printPolynomial(coefficients);
 		for (int i = 0; i < partyCount; i++) {
 			result[i] = calculatePolynomial(coefficients, i+1);
 			System.out.println("Share of P[" + (i+1) + "] --> " + result[i] );
@@ -37,14 +34,10 @@ public class SharingScheme {
 		return r;
 	}
 	
-	private int[] generateRecombinationVector(int count) {
-		int[] vector = new int[count];
-		int[] set = new int[count];
+	private int[] generateRecombinationVector(int[] set) {
+		int[] vector = new int[set.length];
+
 		for (int i = 0; i < set.length; i++) {
-			set[i] = i+1;
-		}
-		
-		for (int i = 0; i < count; i++) {
 			vector[i] = calculatePolynomial(delta(set, set[i]), 0);
 		}
 		
@@ -53,9 +46,10 @@ public class SharingScheme {
 
 	public int findSecret(int[] parties, int[] values) { 
 		int secret = 0;
+		int[] recombinationVector = generateRecombinationVector(parties);
 		for (int i = 0; i < values.length; i++) {
 			// parties[i] - 1 : turn the index into 0-based format
-			secret += values[i] * recombinationVector[parties[i] - 1];
+			secret += values[i] * recombinationVector[i];
 		}
 		
 		return moduloPrime(secret);
@@ -97,14 +91,14 @@ public class SharingScheme {
 	}
 	
 	private int[] generateCoefficients(int secret) {
-//		int[] coefficients = new int[degree+1];
-//		Random randomizer = new Random();
-//		coefficients[0] = secret;
-//		for (int i = 1; i <= degree; i++) {
-//			coefficients[i] = randomizer.nextInt(prime); 
-//		}
-//		return coefficients;
-		return new int[] { 1, 2 };
+		int[] coefficients = new int[degree+1];
+		Random randomizer = new Random();
+		coefficients[0] = secret;
+		for (int i = 1; i <= degree; i++) {
+			coefficients[i] = randomizer.nextInt(prime); 
+		}
+		return coefficients;
+//		return new int[] { 1, 2 };
 	}
 	
 	private int calculatePolynomial(int[] coefficients, int x) {
@@ -138,7 +132,7 @@ public class SharingScheme {
 	}
 	
 	public void printPolynomial(int[] coefficients) {
-		String s = "Fs(X) = [s + ";
+		String s = "F(X) = [ " + coefficients[0] + " + ";
 		for (int i = 1; i < coefficients.length - 1; i++) {
 			s += coefficients[i] + "X ^ " + i + " + ";
 		}
@@ -148,10 +142,12 @@ public class SharingScheme {
 	}
 	
 	public static void main(String[] args) {
-		SharingScheme scheme = new SharingScheme(5, 1, 3);
+		SharingScheme scheme = new SharingScheme(5, 1);
 		int[] x = scheme.generateCoefficients(1);
-		int[] y = scheme.generateShares(3, 6);
+		int[] y = scheme.generateShares(6, 3);
 		
-		int l = scheme.findSecret(new int[] { 1, 2}, new int[] {3, 0} );
+		System.out.println(scheme.findSecret(new int[] { 1, 3}, new int[] {y[0], y[2]}));
+		System.out.println(scheme.findSecret(new int[] { 2, 3}, new int[] {y[1], y[2]}));
+		System.out.println(scheme.findSecret(new int[] { 1, 2}, new int[] {y[0], y[1]}));
 	}
 }

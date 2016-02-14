@@ -10,13 +10,13 @@ public class MainMPC {
 			Party p1 = new Party(7, 1, 3, 0);
 			Party p2 = new Party(7, 1, 3, 1);
 			Party p3 = new Party(7, 1, 3, 2);
-			
-			int[] shares_a = p1.shareSecret("a"	, 5);
+
+			int[] shares_a = p1.shareSecret("a"	, 4);
 			p1.setShare("a", shares_a[p1.PARTY_ID]);
 			p2.setShare("a", shares_a[p2.PARTY_ID]);
 			p3.setShare("a", shares_a[p3.PARTY_ID]);
 			
-			int[] shares_b = p2.shareSecret("b"	, 1);
+			int[] shares_b = p2.shareSecret("b"	, 6);
 			p1.setShare("b", shares_b[p1.PARTY_ID]);
 			p2.setShare("b", shares_b[p2.PARTY_ID]);
 			p3.setShare("b", shares_b[p3.PARTY_ID]);

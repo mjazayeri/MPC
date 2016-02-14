@@ -14,13 +14,13 @@ public class Party {//extends UnicastRemoteObject implements PartyInterface{
 		
 	public Party(int prime, int degree, int partiesCount, int id) throws RemoteException{
 		shares = new HashMap<>();
-		scheme = new SharingScheme(prime, degree, partiesCount);
+		scheme = new SharingScheme(prime, degree);
 		PARTY_ID = id;
 	}
 	
 	public int[] shareSecret(String secretName, int secretValue) {
 		try {
-			int [] sharesOfSecret = scheme.generateShares(NUMBER_OF_PARTIES, secretValue);
+			int [] sharesOfSecret = scheme.generateShares(secretValue, NUMBER_OF_PARTIES);
 			shares.put(secretName, sharesOfSecret[PARTY_ID]);
 			
 			//TODO: send this shares to each party;
@@ -77,7 +77,7 @@ public class Party {//extends UnicastRemoteObject implements PartyInterface{
 		
 		int secret = 0;
 		try {
-			return scheme.laplase(parties, sharedValues);
+			return scheme.findSecret(parties, sharedValues);
 		} catch (Exception e) {
 			// TODO: write log
 			return -1;
