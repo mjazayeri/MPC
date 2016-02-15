@@ -55,7 +55,7 @@ public class SharingScheme {
 		return moduloPrime(secret);
 	}
 	
-	public int laplase(int[] parties, int[] values) {
+	public int lagrange(int[] parties, int[] values) {
 		
 		int secret = 0;
 		for (int i = 0; i < parties.length; i++) {

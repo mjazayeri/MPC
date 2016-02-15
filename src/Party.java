@@ -48,16 +48,16 @@ public class Party {//extends UnicastRemoteObject implements PartyInterface{
 	}
 	
 	//@Override
-	public boolean multiplication(String a, String b) {
+	public int[] multiplication(String a, String b) {
 		int firstVal = shares.remove(a);
 		int secondVal = shares.remove(b);
 		
 		int multiplication = scheme.moduloPrime(firstVal * secondVal);
-		
-		//TODO:	share the local value
-		
-		shares.put(a + "*" + b, multiplication);
-		return true;
+		int[] reducedDegreeValue = scheme.generateShares(multiplication, NUMBER_OF_PARTIES);
+		//TODO: set the shares of others
+		//add all the received shares with your share
+		//store it as 'first*second'
+		return reducedDegreeValue;
 		
 	}
 	
