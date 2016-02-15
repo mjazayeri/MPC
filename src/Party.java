@@ -1,12 +1,14 @@
 import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.HashMap;
 
-public class Party {//extends UnicastRemoteObject implements PartyInterface{
+public class Party extends UnicastRemoteObject implements PartyInterface{
 	
 	private HashMap<String, Integer> shares;
 	private SharingScheme scheme;
-	
+	PartyInterface[] parties;
 	public final int NUMBER_OF_PARTIES = 3;
 	
 	//a number in [0 , NUMBER_OF_PARTIES]
@@ -18,50 +20,75 @@ public class Party {//extends UnicastRemoteObject implements PartyInterface{
 		PARTY_ID = id;
 	}
 	
-	public int[] shareSecret(String secretName, int secretValue) {
+	public void connectToOtherParties() { 
+		parties = new PartyInterface[NUMBER_OF_PARTIES - 1];
+		
+		int othersId = PARTY_ID;
+		try {
+			for (int i = 0; i < parties.length; i++) {
+				String partyName = "P" + (othersId++  % NUMBER_OF_PARTIES);
+				Registry registry = LocateRegistry.getRegistry();
+				parties[i] = (PartyInterface)registry.lookup(partyName);
+			}
+			
+		} catch (Exception e) {
+			// TODO: handle exception
+		}
+		//parties.add
+	}
+	
+	public boolean shareSecret(String secretName, int secretValue) {
 		try {
 			int [] sharesOfSecret = scheme.generateShares(secretValue, NUMBER_OF_PARTIES);
 			shares.put(secretName, sharesOfSecret[PARTY_ID]);
 			
-			//TODO: send this shares to each party;
-			return sharesOfSecret;
+			int othersId = PARTY_ID;
+			for (int i = 0; i < parties.length; i++) {
+				int share = sharesOfSecret[othersId++ % NUMBER_OF_PARTIES];
+				parties[i].setShare(secretName, share);
+			}
+			return true;
 		} 
 		catch (Exception e) {
 			//TODO: create a log file
-			return null;
+			return false;
 		}
 	}
 	
-	//@Override
-	public int addition(String a, String b) throws RemoteException {
+	@Override
+	public int getId() throws RemoteException { 
+		return PARTY_ID;
+	}
+	
+	@Override
+	public boolean addition(String a, String b) throws RemoteException {
 			
-		int firstVal = shares.remove(a);
-		int secondVal = shares.remove(b);
-
+		int firstVal = shares.get(a);
+		int secondVal = shares.get(b);
 		int addition = scheme.moduloPrime(firstVal + secondVal);
-		
-		//TODO: create shares and send each party's share
 		
 		shares.put(a + "+" + b, addition);
 		System.out.println("party<" + PARTY_ID + "> a + b = " + addition);
-		return addition;
+		return true;
 	}
 	
-	//@Override
-	public int[] multiplication(String a, String b) {
-		int firstVal = shares.remove(a);
-		int secondVal = shares.remove(b);
+	@Override
+	public boolean multiplication(String a, String b) {
+		int firstVal = shares.get(a);
+		int secondVal = shares.get(b);
 		
 		int multiplication = scheme.moduloPrime(firstVal * secondVal);
-		int[] reducedDegreeValue = scheme.generateShares(multiplication, NUMBER_OF_PARTIES);
-		//TODO: set the shares of others
-		//add all the received shares with your share
-		//store it as 'first*second'
-		return reducedDegreeValue;
+		String multName = a + "*" + b + ":" + PARTY_ID;
+		if(shareSecret(multName, multiplication)) {
+			return true;
+		}
+		
+		shares.remove(multName);
+		return true;
 		
 	}
 	
-	//@Override
+	@Override
 	public boolean setShare(String shareName, int shareValue) throws RemoteException{
 		try {
 			shares.put(shareName, shareValue);

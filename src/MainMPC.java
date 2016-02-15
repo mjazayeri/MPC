@@ -25,18 +25,17 @@ public class MainMPC {
 //			int add2 = p2.addition("a", "b");
 //			int add3 = p3.addition("a", "b");
 //			
-			int mult1[] = p1.multiplication("a", "b");
-			int mult2[] = p2.multiplication("a", "b");
-			int mult3[] = p3.multiplication("a", "b");
-			
-			
-			int m1 = p1.reconstructSecret(new int[] {1, 2, 3}, new int[]{mult1[0], mult2[0], mult3[0]});
-			int m2 = p2.reconstructSecret(new int[] {1, 2, 3}, new int[]{mult1[1], mult2[1], mult3[1]});
-			int m3 = p3.reconstructSecret(new int[] {1, 2, 3}, new int[]{mult1[2], mult2[2], mult3[2]});
-			System.out.println(p3.reconstructSecret(new int[] {1, 2, 3}, new int[]{m1, m2, m3}));
+//			int mult1[] = p1.multiplication("a", "b");
+//			int mult2[] = p2.multiplication("a", "b");
+//			int mult3[] = p3.multiplication("a", "b");
+//			
+//			int m1 = p1.reconstructSecret(new int[] {1, 2, 3}, new int[]{mult1[0], mult2[0], mult3[0]});
+//			int m2 = p2.reconstructSecret(new int[] {1, 2, 3}, new int[]{mult1[1], mult2[1], mult3[1]});
+//			int m3 = p3.reconstructSecret(new int[] {1, 2, 3}, new int[]{mult1[2], mult2[2], mult3[2]});
+//			System.out.println(p3.reconstructSecret(new int[] {1, 2, 3}, new int[]{m1, m2, m3}));
 		} 
 		catch (Exception e) {
-		}//5*3 1*2 4*1
+		}
 		
 	}
 }
