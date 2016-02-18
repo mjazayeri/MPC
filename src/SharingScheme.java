@@ -8,7 +8,6 @@ public class SharingScheme {
 	public SharingScheme(int prime, int degree) {
 		this.degree = degree;
 		this.prime = prime;
-		
 		System.out.println("Class initialized:");
 		System.out.println("Degree of polynomial: t = " + degree);
 		System.out.println("Prime number: p = " + prime);
@@ -19,10 +18,10 @@ public class SharingScheme {
 		int[] coefficients = generateCoefficients(secret);
 		int[] result = new int[partyCount];
 		
-		printPolynomial(coefficients);
+		//printPolynomial(coefficients);
 		for (int i = 0; i < partyCount; i++) {
 			result[i] = calculatePolynomial(coefficients, i+1);
-			System.out.println("Share of P[" + (i+1) + "] --> " + result[i] );
+			System.out.println("P[" + (i+1) + "] --> " + result[i] );
 		}
 		
 		return result;
@@ -34,7 +33,7 @@ public class SharingScheme {
 		return r;
 	}
 	
-	private int[] generateRecombinationVector(int[] set) {
+	public int[] generateRecombinationVector(int[] set) {
 		int[] vector = new int[set.length];
 
 		for (int i = 0; i < set.length; i++) {
@@ -98,7 +97,6 @@ public class SharingScheme {
 			coefficients[i] = randomizer.nextInt(prime); 
 		}
 		return coefficients;
-//		return new int[] { 1, 2 };
 	}
 	
 	private int calculatePolynomial(int[] coefficients, int x) {
