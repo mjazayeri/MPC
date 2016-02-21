@@ -15,16 +15,22 @@ public class SharingScheme {
 	
 	public int[] generateShares(int secret, int partyCount) {
 		
-		int[] coefficients = generateCoefficients(secret);
-		int[] result = new int[partyCount];
-		
-		//printPolynomial(coefficients);
-		for (int i = 0; i < partyCount; i++) {
-			result[i] = calculatePolynomial(coefficients, i+1);
-			System.out.println("P[" + (i+1) + "] --> " + result[i] );
+		try {
+			int[] coefficients = generateCoefficients(secret);
+			int[] result = new int[partyCount];
+			
+			//printPolynomial(coefficients);
+			for (int i = 0; i < partyCount; i++) {
+				result[i] = calculatePolynomial(coefficients, i+1);
+				System.out.println("P[" + (i+1) + "] --> " + result[i] );
+			}
+			
+			return result;
+		} 
+		catch (Exception e) {
+			System.out.println("exception in generateShares:" + e.getMessage());
+			return null;
 		}
-		
-		return result;
 	}
 	
 	public int moduloPrime(int num) { 

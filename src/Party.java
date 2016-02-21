@@ -6,6 +6,8 @@ import java.util.HashMap;
 
 import javax.print.attribute.standard.NumberOfDocuments;
 
+import com.sun.corba.se.impl.encoding.TypeCodeReader;
+
 public class Party extends UnicastRemoteObject implements PartyInterface{
 	
 	public HashMap<String, Integer> shares;
@@ -14,7 +16,7 @@ public class Party extends UnicastRemoteObject implements PartyInterface{
 	private int[] recombinationVector;
 	
 	private String neededToken = "";
-	private int receivedToken = 0;
+	private int receivedTokens = 0;
 	
 	public final int NUMBER_OF_PARTIES;
 	
@@ -35,39 +37,44 @@ public class Party extends UnicastRemoteObject implements PartyInterface{
 	public void connectToOtherParties(int[] ports) { 
 		parties = new PartyInterface[NUMBER_OF_PARTIES - 1];
 		
-		int nextParty = (PARTY_ID +1) % NUMBER_OF_PARTIES;
 		int j = 0;
 		try {
 			for (int i = 0; i < ports.length; i++) {
 				if( i != PARTY_ID) {
-					String partyName = "P" + ( nextParty + 1);
+					String partyName = "P" + (i + 1);//( nextParty + 1);
 					Registry registry = LocateRegistry.getRegistry(ports[i]);
 					parties[j++] = (PartyInterface)registry.lookup(partyName);
-					nextParty = nextParty + 1 % NUMBER_OF_PARTIES;
 				}
 			}
 			
 		} catch (Exception e) {
-			System.out.println("Exception: " + e.getMessage());
+			System.out.println("connectToOtherParties: " + e.getMessage());
 		}
 		//parties.add
 	}
 	
-	public  boolean shareSecret(String secretName, int secretValue) {
+	public synchronized boolean shareSecret(String secretName, int secretValue) {
+		
+		int j = 0;
+		int [] sharesOfSecret = scheme.generateShares(secretValue, NUMBER_OF_PARTIES);
+		if(sharesOfSecret == null) 
+			return false;
+		
 		try {
-			int [] sharesOfSecret = scheme.generateShares(secretValue, NUMBER_OF_PARTIES);
-			shares.put(secretName, sharesOfSecret[PARTY_ID]);
-			
-			int nextId = (PARTY_ID + 1) % NUMBER_OF_PARTIES;
-			for (int i = 0; i < parties.length; i++) {
-				int share = sharesOfSecret[nextId];
-				parties[i].setShare(secretName, share);
-				nextId = (nextId + 1) % NUMBER_OF_PARTIES;
+			for (int i = 0; i < NUMBER_OF_PARTIES; i++) {
+				if(i == PARTY_ID)
+					setShare(secretName, sharesOfSecret[i]);
+				else {
+					if(!parties[j++].setShare(secretName, sharesOfSecret[i])) {
+						System.out.println("Error Sharing secret of party"+ j);
+						return false;
+					}
+				}
 			}
 			return true;
 		} 
 		catch (Exception e) {
-			System.out.println("shareSeceret, Exception:" + e.getMessage());
+			System.out.println("shareSeceret party"+j+", Exception:" + e.getMessage());
 			return false;
 		}
 	}
@@ -75,6 +82,24 @@ public class Party extends UnicastRemoteObject implements PartyInterface{
 	@Override
 	public synchronized int getId() throws RemoteException { 
 		return PARTY_ID;
+	}
+	
+	@Override
+	public boolean multiplyByConstant(String a, int constant, boolean isPartyReq) throws RemoteException {
+		if(!shares.containsKey(a))
+			return false;
+		
+		int secret = shares.get(a);
+		secret = scheme.moduloPrime(constant * secret);
+		shares.put(a, secret);
+		
+		if(!isPartyReq) {
+			for (int i = 0; i < parties.length; i++) {
+				parties[i].multiplyByConstant(a, constant, true);
+			}
+		}
+		
+		return true;
 	}
 	
 	@Override
@@ -97,68 +122,116 @@ public class Party extends UnicastRemoteObject implements PartyInterface{
 	}
 	
 	@Override
-	public boolean multiplication(String a, String b, boolean isPartyReq) throws RemoteException{
-		System.out.println("called *");
-		int firstVal = shares.get(a);
-		int secondVal = shares.get(b);
+	public int getShare(String name) throws RemoteException {
 		
-		int multiplication = scheme.moduloPrime(firstVal * secondVal);
-		if(!shareSecret(PARTY_ID + a + "*" + b, multiplication)) {
-			System.out.println("Error occured in sharing the result of a * b");
-			return false;
+		if(shares.containsKey(name))
+			return shares.get(name);
+		
+		return -1;
+	}
+	
+	@Override
+	public boolean multiplication(String a, String b, boolean isPartyReq) throws RemoteException {
+		int firstVal=0, secondVal=0;
+		synchronized (this) {
+			firstVal = shares.get(a);
+			secondVal = shares.get(b);
 		}
 		try {
-			
-			neededToken = a + "*" + b;
-			receivedToken = 0;
+			int multiplication = scheme.moduloPrime(firstVal * secondVal);
+			if(!shareSecret(PARTY_ID + a + "*" + b, multiplication)) {
+				return false;
+			}
 			
 			if(!isPartyReq) {
-				System.out.println("Share mult result with others");
 				for(int i = 0; i < parties.length; i++) { 
 					if(!parties[i].multiplication(a, b, true)) {
 						System.out.println("Error occured during other's multiplication");
 						return false;
 					}
 				}
+				computeMultiplication(a + "*" + b);
+				for (int i = 0; i < parties.length; i++) {
+					parties[i].computeMultiplication(a + "*" + b);
+				}
 			}
-			
-			System.out.println("waiting for other's shares");
-			while(receivedToken < NUMBER_OF_PARTIES - 1) {
-				wait();
-			}
-			System.out.println("shares received");
-			
-			int multResult = 0;
-			for (int i = 0; i < NUMBER_OF_PARTIES; i++) {
-				int share = shares.get( i + a + "*" + b);
-				multResult += recombinationVector[i] * share;
-			}
-			
-			shares.put(a + "*" + b, scheme.moduloPrime(multResult));
-		} catch (Exception e) {
-			System.out.println("multiplication, Exception: ");e.printStackTrace();
+
+			return true;
+		} 
+		catch (Exception e) {
+			System.out.println("multiplication, Exception: " + e.getLocalizedMessage());
+			return false;
 		}
-		return true;
-		
 	}
 	
 	@Override
 	public synchronized boolean setShare(String shareName, int shareValue) throws RemoteException{
 		try {
 			
-			if(!neededToken.equals("") && shareName.contains(neededToken)) {
-				receivedToken++;
-				notify();
-			}
 			shares.put(shareName, shareValue);
 			return true;
 		} 
 		catch (Exception e) {
-			System.out.println("setShare,Exception:" + e.getMessage());
+			System.out.println("Exception in setShare:" + e.getMessage());
 			return false;
 		}
 	}
 	
+	@Override
+	public void computeMultiplication(String sharesTokenName) throws RemoteException{
+		
+		receivedTokens = 0;
+		try {
+			int multResult = 0;
+			for (int i = 0; i < NUMBER_OF_PARTIES; i++) {
+				int share = shares.get( i + sharesTokenName);
+				multResult += recombinationVector[i] * share;
+			}
+			
+			shares.put(sharesTokenName, scheme.moduloPrime(multResult));
+		} 
+		catch (Exception e) {
+			System.out.println("Exception in computing * result" + e.getMessage());
+		}
+	}
+
+	public int reconstructSecret(String secretName) {
+
+		int secret = 0;
+		int[] partySet = new int[NUMBER_OF_PARTIES];
+		int[] values = new int[NUMBER_OF_PARTIES];
+		int j=0;
+		try {
+			for (int i = 0; i < NUMBER_OF_PARTIES; i++) {
+				partySet[i] = i+1;
+				if(i == PARTY_ID) {
+					values[i] = shares.get(secretName);
+					if(values[i] < 0) {
+						System.out.println("party[" + (i+1) + "doesnt hold" + secretName);
+						return -1;
+					}
+				}
+				else
+					values[i] = parties[j++].getShare(secretName);
+			}
+
+			secret = scheme.findSecret(partySet, values);
+			System.out.println(secret);
+			return secret;
+		} 
+		catch (Exception e) {
+			System.out.println("Exception in reconstructSecret:" + e.getMessage());
+			return -1;
+		}
+	}
+	
+	private void sleep() {
+		try {
+			Thread.sleep(500);
+		} catch (Exception e) {
+			// TODO: handle exception
+		}
+	}
 	public int reconstructSecret(int[] parties, int[] sharedValues) {
 		
 		int secret = 0;
