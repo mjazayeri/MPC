@@ -2,6 +2,7 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
+import java.util.ArrayList;
 import java.util.HashMap;
 
 import javax.print.attribute.standard.NumberOfDocuments;
@@ -34,23 +35,22 @@ public class Party extends UnicastRemoteObject implements PartyInterface{
 		recombinationVector = scheme.generateRecombinationVector(setOfAllParties);
 	}
 	
-	public void connectToOtherParties(int[] ports) { 
+	public boolean connectToOtherParties(ArrayList<Address> addresses) { 
 		parties = new PartyInterface[NUMBER_OF_PARTIES - 1];
 		
-		int j = 0;
 		try {
-			for (int i = 0; i < ports.length; i++) {
-				if( i != PARTY_ID) {
-					String partyName = "P" + (i + 1);//( nextParty + 1);
-					Registry registry = LocateRegistry.getRegistry(ports[i]);
-					parties[j++] = (PartyInterface)registry.lookup(partyName);
-				}
+			for (int i = 0; i < addresses.size(); i++) {
+				Address addr = addresses.get(i);
+				String partyName = "P" + (addr.id + 1);
+				Registry registry = LocateRegistry.getRegistry(addr.IP, addr.port);
+				parties[i] = (PartyInterface)registry.lookup(partyName);
 			}
-			
-		} catch (Exception e) {
+			return true;
+		} 
+		catch (Exception e) {
 			System.out.println("connectToOtherParties: " + e.getMessage());
+			return false;
 		}
-		//parties.add
 	}
 	
 	public synchronized boolean shareSecret(String secretName, int secretValue) {

@@ -1,23 +1,25 @@
+import java.awt.List;
 import java.io.BufferedReader;
+import java.io.FileInputStream;
 import java.io.InputStreamReader;
 import java.rmi.registry.*;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Scanner;
-
-import com.sun.javafx.print.PrintHelper;
-import com.sun.xml.internal.ws.util.StringUtils;
 
 public class MainMPC {
 
 	private static Party party;
 	private static int partyId;
+	private static String IP;
+	private static int port;
+	
 	private static int prime;
 	private static int degree;
-	private static int partiesCount;
-
-	private static String serverId = "";
-	private static int port;
-
+	private static int partiesCount = 0;
+	
+	private static ArrayList<Address> addresses; 
+	
 	public static void main(String[] args) {
 		try {
 			
@@ -28,7 +30,10 @@ public class MainMPC {
 
 			Registry registry = LocateRegistry.createRegistry(port);
 			registry.rebind("P"+ (partyId + 1), (PartyInterface)party);
-
+			
+			System.out.println("If all parties are ready entery [Y]:");
+			System.out.print(">");
+			new Scanner(System.in).next();
 
 		} 
 		catch (Exception e) {
@@ -37,7 +42,8 @@ public class MainMPC {
 		}
 
 		
-		party.connectToOtherParties(readPartiesPort());
+		if(!party.connectToOtherParties(addresses))
+			return;
 		
 		runCommands();
 
@@ -94,7 +100,6 @@ public class MainMPC {
 			}
 		}
 	}
-	
 	private static void multiplication(String a, String b) throws Exception{
 		if(checkIfIsNumber(a)) {
 			party.multiplyByConstant(b, Integer.parseInt(a), false);
@@ -106,7 +111,6 @@ public class MainMPC {
 			party.multiplication(a, b, false);
 		}
 	}
-	
 	private static boolean checkIfIsNumber(String input) {
 		try {
 			Integer.parseInt(input);
@@ -117,26 +121,62 @@ public class MainMPC {
 		}
 	}
 	private static void setServerConfigurations() {
+		addresses = new ArrayList<Address>();
 		try {
-			System.out.println(">Select a serverId from [0, 1, 2, 3, 4,...]");
+			System.out.println("Select a serverId from [0, 1, 2, 3, 4,...]");
+			System.out.print(">");
 			Scanner scanner = new Scanner(System.in);
 			partyId = scanner.nextInt();
 			
-			System.out.println(">Enter Port: ");
-			port = scanner.nextInt();
-			
-			System.out.println(">Enter the degree of polynomial (t): ");
-			degree = scanner.nextInt();
-			
-			System.out.println(">Enter prime value (p): ");
-			prime = scanner.nextInt();
-			
-			System.out.println(">Enter parties count (n): ");
-			partiesCount = scanner.nextInt();
-			
+			boolean doSkip = false;
+			try(BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream("settings.config")))) { 
+				String line;
+				while((line = reader.readLine()) != null) { 
+					Address addr = new Address();
+					partiesCount++;
+					
+					String[] tokens = line.split(",");
+					for (int i = 0; i < tokens.length; i++) {
+						String[] items = tokens[i].split(":");
+						switch (items[0]) {
+						case "ID":
+							addr.id = Integer.parseInt(items[1]);
+							break;
+						case "IP":
+							addr.IP = items[1];
+							break;
+						case "PORT":
+							addr.port = Integer.parseInt(items[1]);
+							break;
+						case "PRIME":
+							if(!doSkip)
+								prime = Integer.parseInt(items[1]);
+							break;
+						case "DEGREE":
+							if(!doSkip)
+								degree = Integer.parseInt(items[1]);
+							break;
+						default:
+							break;
+						}
+					}
+					
+					if(addr.id == partyId) {
+						IP = addr.IP;
+						port = addr.port;
+						doSkip = true;
+					}
+					else
+						addresses.add(addr);
+				}
+			}
+			catch(Exception e) {
+				System.out.println("setServerConfigurations, Error:" + e.getMessage());
+			}
 		} 
 		catch (Exception e) {
-			System.out.println("Exception occured in getting serverId. Error: " + e.getMessage());
+			
+			System.out.println("setServerConfigurations. Error: " + e.getMessage());
 		}
 	}
 	private static void printHelp() { 
@@ -154,27 +194,5 @@ public class MainMPC {
 		System.out.println("+ x1*x1*x1 x2");
 		System.out.println("find x1*x1*x1+x2 \"put no space in between\"");
 		
-	}
-	private static int[] readPartiesPort() { 
-		
-		System.out.println();
-		System.out.println();
-		System.out.println(">If you are sure all the parties are up,");
-		int[] ports = new int[partiesCount];
-
-		for (int i = 0; i < ports.length; i++) {
-			try {
-				if(i != partyId) {
-					System.out.println(">Type the port of the server with Id = " + i);
-					Scanner scanner = new Scanner(System.in);
-					ports[i] = scanner.nextInt();
-				}
-			}
-			catch (Exception e) {
-				i--;
-			}
-		}
-		
-		return ports;
 	}
 }
